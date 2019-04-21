@@ -202,7 +202,7 @@ func (t *writeFlusher) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-// set compress type(tcp: zip/snappy, websocket:zip)
+// 设置压缩算法：(tcp: zip/snappy, websocket:zip)
 func (t *gettyTCPConn) SetCompressType(c CompressType) {
 	switch c {
 	case CompressNone, CompressZip, CompressBestSpeed, CompressBestCompression, CompressHuffman:
@@ -394,9 +394,12 @@ func (t *gettyKCPConn) read(p []byte) (int, error) {
 			t.rLastDeadline = currentTime
 		}
 	}
-
+	//
 	length, err = t.reader.Read(p)
-	log.Debug("now:%s, length:%d, err:%s", currentTime, length, err)
+	if err != nil {
+		return length, jerrors.Trace(err)
+	}
+	//	log.Debug("now:%s, length:%d, err:%s", currentTime, length, err)
 	atomic.AddUint32(&t.readBytes, uint32(length))
 	return length, jerrors.Trace(err)
 	//return length, err

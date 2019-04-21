@@ -81,8 +81,10 @@ const (
 	CompressZip                          = flate.DefaultCompression // -1
 	CompressBestSpeed                    = flate.BestSpeed          // 1
 	CompressBestCompression              = flate.BestCompression    // 9
-	CompressHuffman                      = flate.HuffmanOnly        // -2
-	CompressSnappy                       = 10
+	// 哈夫曼编码
+	CompressHuffman = flate.HuffmanOnly // -2
+	// snappy压缩库
+	CompressSnappy = 10 //
 )
 
 /////////////////////////////////////////

@@ -26,6 +26,7 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/jeanphorn/log4go"
 	jerrors "github.com/juju/errors"
+	"github.com/xtaci/kcp-go"
 )
 
 const (
@@ -87,6 +88,11 @@ func NewTCPClient(opts ...ClientOption) Client {
 }
 
 // NewUdpClient function builds a connected udp client
+func NewKCPClient(opts ...ClientOption) Client {
+	return newClient(KCP_CLIENT, opts...)
+}
+
+// NewUdpClient function builds a connected udp client
 func NewUDPClient(opts ...ClientOption) Client {
 	return newClient(UDP_CLIENT, opts...)
 }
@@ -145,6 +151,30 @@ func (c *client) dialTCP() Session {
 	}
 }
 
+func (c *client) dialKCP() Session {
+	var (
+		err  error
+		conn net.Conn
+	)
+
+	for {
+		if c.IsClosed() {
+			return nil
+		}
+		conn, err = kcp.Dial(c.addr)
+		if err == nil && gxnet.IsSameAddr(conn.RemoteAddr(), conn.LocalAddr()) {
+			conn.Close()
+			err = errSelfConnect
+		}
+		if err == nil {
+			return newKCPSession(conn, c)
+		}
+
+		log.Info("net.DialTimeout(addr:%s, timeout:%v) = error{%s}", c.addr, jerrors.ErrorStack(err))
+		// time.Sleep(connInterval)
+		<-wheel.After(connInterval)
+	}
+}
 func (c *client) dialUDP() Session {
 	var (
 		err       error
@@ -318,6 +348,8 @@ func (c *client) dial() Session {
 	switch c.endPointType {
 	case TCP_CLIENT:
 		return c.dialTCP()
+	case KCP_CLIENT:
+		return c.dialKCP()
 	case UDP_CLIENT:
 		return c.dialUDP()
 	case WS_CLIENT:
