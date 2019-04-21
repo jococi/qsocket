@@ -1,5 +1,5 @@
 /******************************************************
-# DESC       : getty version
+# DESC       : qsocket version
 # MAINTAINER : Alex Stocks
 # LICENCE    : Apache License 2.0
 # EMAIL      : alexstocks@foxmail.com
@@ -7,7 +7,7 @@
 # FILE       : version.go
 ******************************************************/
 
-package getty
+package qsocket
 
 const (
 	Version     = "1.0.3"

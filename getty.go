@@ -1,13 +1,13 @@
 /******************************************************
-# DESC       : getty interface
+# DESC       : qsocket interface
 # MAINTAINER : Alex Stocks
 # LICENCE    : Apache License 2.0
 # EMAIL      : alexstocks@foxmail.com
 # MOD        : 2016-08-17 11:20
-# FILE       : getty.go
+# FILE       : qsocket.go
 ******************************************************/
 
-package getty
+package qsocket
 
 import (
 	"compress/flate"
@@ -18,7 +18,7 @@ import (
 
 // NewSessionCallback will be invoked when server accepts a new client connection or client connects to server successfully.
 // If there are too many client connections or u do not want to connect a server again, u can return non-nil error. And
-// then getty will close the new session.
+// then qsocket will close the new session.
 type NewSessionCallback func(Session) error
 
 // Reader is used to unmarshal a complete pkg from buffer
@@ -56,10 +56,10 @@ type EventListener interface {
 	// invoked periodically, its period can be set by (Session)SetCronPeriod
 	OnCron(Session)
 
-	// invoked when getty received a package. Pls attention that do not handle long time
+	// invoked when qsocket received a package. Pls attention that do not handle long time
 	// logic processing in this func. You'd better set the package's maximum length.
 	// If the message's length is greater than it, u should should return err in
-	// Reader{Read} and getty will close this connection soon.
+	// Reader{Read} and qsocket will close this connection soon.
 	//
 	// If ur logic processing in this func will take a long time, u should start a goroutine
 	// pool(like working thread pool in cpp) to handle the processing asynchronously. Or u

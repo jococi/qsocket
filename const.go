@@ -8,7 +8,7 @@
 # FILE    : const.go
 ******************************************************/
 
-package getty
+package qsocket
 
 import (
 	"strconv"

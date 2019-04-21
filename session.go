@@ -7,7 +7,7 @@
 # FILE       : session.go
 ******************************************************/
 
-package getty
+package qsocket
 
 import (
 	"bytes"
@@ -20,8 +20,8 @@ import (
 )
 
 import (
-	log "github.com/AlexStocks/log4go"
 	"github.com/gorilla/websocket"
+	log "github.com/jeanphorn/log4go"
 	jerrors "github.com/juju/errors"
 )
 
@@ -40,6 +40,7 @@ const (
 	defaultUDPSessionName = "udp-session"
 	defaultWSSessionName  = "ws-session"
 	defaultWSSSessionName = "wss-session"
+	defaultKCPSessionName = "kcp-session"
 	outputFormat          = "session %s, Read Bytes: %d, Write Bytes: %d, Read Pkgs: %d, Write Pkgs: %d"
 )
 
@@ -55,7 +56,7 @@ func GetTimeWheel() *gxtime.Wheel {
 	return wheel
 }
 
-// getty base session
+// qsocket base session
 type session struct {
 	name      string
 	endPoint  EndPoint

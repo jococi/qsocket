@@ -7,7 +7,7 @@
 # FILE       : conn.go
 ******************************************************/
 
-package getty
+package qsocket
 
 import (
 	"compress/flate"
@@ -21,9 +21,9 @@ import (
 )
 
 import (
-	log "github.com/AlexStocks/log4go"
 	"github.com/golang/snappy"
 	"github.com/gorilla/websocket"
+	log "github.com/jeanphorn/log4go"
 	jerrors "github.com/juju/errors"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -36,7 +36,7 @@ var (
 )
 
 /////////////////////////////////////////
-// getty connection
+// qsocket connection
 /////////////////////////////////////////
 
 var (
@@ -139,7 +139,7 @@ func (c *gettyConn) SetWriteTimeout(wTimeout time.Duration) {
 }
 
 /////////////////////////////////////////
-// getty tcp connection
+// qsocket tcp connection
 /////////////////////////////////////////
 
 type gettyTCPConn struct {
@@ -309,7 +309,7 @@ func (t *gettyTCPConn) close(waitSec int) {
 }
 
 /////////////////////////////////////////
-// getty udp connection
+// qsocket udp connection
 /////////////////////////////////////////
 
 type UDPContext struct {
@@ -465,7 +465,7 @@ func (u *gettyUDPConn) close(_ int) {
 }
 
 /////////////////////////////////////////
-// getty websocket connection
+// qsocket websocket connection
 /////////////////////////////////////////
 
 type gettyWSConn struct {

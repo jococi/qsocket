@@ -1,13 +1,13 @@
-# getty #
+# qsocket #
 ---
  *a netty like asynchronous network I/O library*
 
 ## introdction ##
 ---
-> DESC       : a asynchronous network I/O library in golang. In getty there are two goroutines in one connection(session),
+> DESC       : a asynchronous network I/O library in golang. In qsocket there are two goroutines in one connection(session),
                one handle network read buffer tcp stream, the other handle logic process and write response into network
                write buffer. If your logic process may take a long time, you should start a new logic process goroutine
-               by yourself in (Codec):OnMessage. Getty is based on "ngo" whose author is sanbit(https://github.com/sanbit).
+               by yourself in (Codec):OnMessage. qsocket is based on "ngo" whose author is sanbit(https://github.com/sanbit).
 >
 > LICENCE    : Apache License 2.0
 
@@ -127,7 +127,7 @@
 
 - 2017/04/21
     > bug fix
-    * 1 client can not connect wss server because of getty does not verify whether cert&key is nil or not in client.go:dialWSS
+    * 1 client can not connect wss server because of qsocket does not verify whether cert&key is nil or not in client.go:dialWSS
 
     > version: 0.7.02
 
@@ -245,7 +245,7 @@
     > 3 version: 0.3.13
 
 - 2016/09/27
-    > 1 fix bug: getty panic when conn.RemoteAddr() is nil in session.go:(Session)sessionToken()
+    > 1 fix bug: qsocket panic when conn.RemoteAddr() is nil in session.go:(Session)sessionToken()
     >
     > 2 version: 0.3.12
 
@@ -401,7 +401,7 @@
 - 2016/08/16
     > 1 rename all structs
     >
-    > 2 add getty connection
+    > 2 add qsocket connection
     >
     > 3 rewrite (Session)handleRead & (Session)handleEventLoop
     >

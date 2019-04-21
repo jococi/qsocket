@@ -1,5 +1,5 @@
 /******************************************************
-# DESC       : getty server
+# DESC       : qsocket server
 # MAINTAINER : Alex Stocks
 # LICENCE    : Apache License 2.0
 # EMAIL      : alexstocks@foxmail.com
@@ -7,7 +7,7 @@
 # FILE       : server.go
 ******************************************************/
 
-package getty
+package qsocket
 
 import (
 	"context"
@@ -22,10 +22,10 @@ import (
 )
 
 import (
-	"github.com/AlexStocks/goext/net"
 	"github.com/AlexStocks/goext/time"
-	log "github.com/AlexStocks/log4go"
 	"github.com/gorilla/websocket"
+	log "github.com/jeanphorn/log4go"
+	"github.com/jococi/qsocket/net"
 	jerrors "github.com/juju/errors"
 )
 

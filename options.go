@@ -1,5 +1,5 @@
 /******************************************************
-# DESC    : getty client/server options
+# DESC    : qsocket client/server options
 # AUTHOR  : Alex Stocks
 # VERSION : 1.0
 # LICENCE : Apache License 2.0
@@ -8,7 +8,7 @@
 # FILE    : options.go
 ******************************************************/
 
-package getty
+package qsocket
 
 /////////////////////////////////////////
 // Server Options

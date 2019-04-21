@@ -1,4 +1,4 @@
-module github.com/AlexStocks/getty
+module github.com/AlexStocks/qsocket
 
 require (
 	github.com/AlexStocks/goext v0.3.2

@@ -1,5 +1,5 @@
 /******************************************************
-# DESC       : getty client
+# DESC       : qsocket client
 # MAINTAINER : Alex Stocks
 # LICENCE    : Apache License 2.0
 # EMAIL      : alexstocks@foxmail.com
@@ -7,7 +7,7 @@
 # FILE       : client.go
 ******************************************************/
 
-package getty
+package qsocket
 
 import (
 	"crypto/tls"
@@ -22,9 +22,9 @@ import (
 )
 
 import (
-	"github.com/AlexStocks/goext/net"
-	log "github.com/AlexStocks/log4go"
 	"github.com/gorilla/websocket"
+	log "github.com/jeanphorn/log4go"
+	"github.com/jococi/qsocket/net"
 	jerrors "github.com/juju/errors"
 )
 
@@ -40,7 +40,7 @@ var (
 )
 
 /////////////////////////////////////////
-// getty tcp client
+// qsocket tcp client
 /////////////////////////////////////////
 
 type client struct {
