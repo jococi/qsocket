@@ -309,6 +309,151 @@ func (t *gettyTCPConn) close(waitSec int) {
 }
 
 /////////////////////////////////////////
+// qsocket tcp connection
+/////////////////////////////////////////
+
+type gettyKCPConn struct {
+	gettyConn
+	reader io.Reader
+	writer io.Writer
+	conn   net.Conn
+}
+
+// create gettyTCPConn
+func newGettyKCPConn(conn net.Conn) *gettyKCPConn {
+	if conn == nil {
+		panic("newGettyTCPConn(conn):@conn is nil")
+	}
+	var localAddr, peerAddr string
+	//  check conn.LocalAddr or conn.RemoetAddr is nil to defeat panic on 2016/09/27
+	if conn.LocalAddr() != nil {
+		localAddr = conn.LocalAddr().String()
+	}
+	if conn.RemoteAddr() != nil {
+		peerAddr = conn.RemoteAddr().String()
+	}
+
+	return &gettyKCPConn{
+		conn:   conn,
+		reader: io.Reader(conn),
+		writer: io.Writer(conn),
+		gettyConn: gettyConn{
+			id:       atomic.AddUint32(&connID, 1),
+			rTimeout: netIOTimeout,
+			wTimeout: netIOTimeout,
+			local:    localAddr,
+			peer:     peerAddr,
+			compress: CompressNone,
+		},
+	}
+}
+
+// set compress type(tcp: zip/snappy, websocket:zip)
+func (t *gettyKCPConn) SetCompressType(c CompressType) {
+	switch c {
+	case CompressNone, CompressZip, CompressBestSpeed, CompressBestCompression, CompressHuffman:
+		ioReader := io.Reader(t.conn)
+		t.reader = flate.NewReader(ioReader)
+
+		ioWriter := io.Writer(t.conn)
+		w, err := flate.NewWriter(ioWriter, int(c))
+		if err != nil {
+			panic(fmt.Sprintf("flate.NewReader(flate.DefaultCompress) = err(%s)", err))
+		}
+		t.writer = &writeFlusher{flusher: w}
+
+	case CompressSnappy:
+		ioReader := io.Reader(t.conn)
+		t.reader = snappy.NewReader(ioReader)
+		ioWriter := io.Writer(t.conn)
+		t.writer = snappy.NewBufferedWriter(ioWriter)
+
+	default:
+		panic(fmt.Sprintf("illegal comparess type %d", c))
+	}
+	t.compress = c
+}
+
+// tcp connection read
+func (t *gettyKCPConn) read(p []byte) (int, error) {
+	var (
+		err         error
+		currentTime time.Time
+		length      int
+	)
+
+	if t.compress == CompressNone && t.rTimeout > 0 {
+		// Optimization: update read deadline only if more than 25%
+		// of the last read deadline exceeded.
+		// See https://github.com/golang/go/issues/15133 for details.
+		currentTime = wheel.Now()
+		if currentTime.Sub(t.rLastDeadline) > (t.rTimeout >> 2) {
+			if err = t.conn.SetReadDeadline(currentTime.Add(t.rTimeout)); err != nil {
+				return 0, jerrors.Trace(err)
+			}
+			t.rLastDeadline = currentTime
+		}
+	}
+
+	length, err = t.reader.Read(p)
+	log.Debug("now:%s, length:%d, err:%s", currentTime, length, err)
+	atomic.AddUint32(&t.readBytes, uint32(length))
+	return length, jerrors.Trace(err)
+	//return length, err
+}
+
+// tcp connection write
+func (t *gettyKCPConn) Write(pkg interface{}) (int, error) {
+	var (
+		err         error
+		currentTime time.Time
+		ok          bool
+		p           []byte
+		length      int
+	)
+
+	if p, ok = pkg.([]byte); !ok {
+		return 0, jerrors.Errorf("illegal @pkg{%#v} type", pkg)
+	}
+	if t.compress == CompressNone && t.wTimeout > 0 {
+		// Optimization: update write deadline only if more than 25%
+		// of the last write deadline exceeded.
+		// See https://github.com/golang/go/issues/15133 for details.
+		currentTime = wheel.Now()
+		if currentTime.Sub(t.wLastDeadline) > (t.wTimeout >> 2) {
+			if err = t.conn.SetWriteDeadline(currentTime.Add(t.wTimeout)); err != nil {
+				return 0, jerrors.Trace(err)
+			}
+			t.wLastDeadline = currentTime
+		}
+	}
+
+	if length, err = t.writer.Write(p); err == nil {
+		atomic.AddUint32(&t.writeBytes, (uint32)(len(p)))
+	}
+	log.Debug("now:%s, length:%d, err:%s", currentTime, length, err)
+	return length, jerrors.Trace(err)
+	//return length, err
+}
+
+// close tcp connection
+func (t *gettyKCPConn) close(waitSec int) {
+	// if tcpConn, ok := t.conn.(*net.TCPConn); ok {
+	// tcpConn.SetLinger(0)
+	// }
+
+	if t.conn != nil {
+		if writer, ok := t.writer.(*snappy.Writer); ok {
+			if err := writer.Close(); err != nil {
+				log.Error("snappy.Writer.Close() = error{%s}", jerrors.ErrorStack(err))
+			}
+		}
+		t.conn.Close()
+		t.conn = nil
+	}
+}
+
+/////////////////////////////////////////
 // qsocket udp connection
 /////////////////////////////////////////
 

@@ -110,6 +110,14 @@ func newTCPSession(conn net.Conn, endPoint EndPoint) Session {
 	return session
 }
 
+func newKCPSession(conn net.Conn, endPoint EndPoint) Session {
+	c := newGettyKCPConn(conn)
+	session := newSession(endPoint, c)
+	session.name = defaultKCPSessionName
+
+	return session
+}
+
 func newUDPSession(conn *net.UDPConn, endPoint EndPoint) Session {
 	c := newGettyUDPConn(conn)
 	session := newSession(endPoint, c)
@@ -142,16 +150,16 @@ func (s *session) Reset() {
 
 // func (s *session) SetConn(conn net.Conn) { s.gettyConn = newGettyConn(conn) }
 func (s *session) Conn() net.Conn {
-	if tc, ok := s.Connection.(*gettyTCPConn); ok {
-		return tc.conn
-	}
 
-	if uc, ok := s.Connection.(*gettyUDPConn); ok {
-		return uc.conn
-	}
-
-	if wc, ok := s.Connection.(*gettyWSConn); ok {
-		return wc.conn.UnderlyingConn()
+	switch s.Connection.(type) {
+	case *gettyTCPConn:
+		return s.Connection.(*gettyTCPConn).conn
+	case *gettyKCPConn:
+		return s.Connection.(*gettyKCPConn).conn
+	case *gettyUDPConn:
+		return s.Connection.(*gettyUDPConn).conn
+	case *gettyWSConn:
+		return s.Connection.(*gettyWSConn).conn.UnderlyingConn()
 	}
 
 	return nil
@@ -567,6 +575,8 @@ func (s *session) handlePackage() {
 		err = s.handleWSPackage()
 	} else if _, ok := s.Connection.(*gettyUDPConn); ok {
 		err = s.handleUDPPackage()
+	} else if _, ok := s.Connection.(*gettyKCPConn); ok {
+		err = s.handleKCPPackage()
 	} else {
 		panic(fmt.Sprintf("unknown type session{%#v}", s))
 	}
@@ -590,6 +600,87 @@ func (s *session) handleTCPPackage() error {
 	buf = make([]byte, maxReadBufLen)
 	pktBuf = new(bytes.Buffer)
 	conn = s.Connection.(*gettyTCPConn)
+	for {
+		if s.IsClosed() {
+			err = nil
+			// do not handle the left stream in pktBuf and exit asap.
+			// it is impossible packing a package by the left stream.
+			break
+		}
+
+		bufLen = 0
+		for {
+			// for clause for the network timeout condition check
+			// s.conn.SetReadTimeout(time.Now().Add(s.rTimeout))
+			bufLen, err = conn.read(buf)
+			if err != nil {
+				if netError, ok = jerrors.Cause(err).(net.Error); ok && netError.Timeout() {
+					break
+				}
+				log.Error("%s, [session.conn.read] = error{%s}", s.sessionToken(), jerrors.ErrorStack(err))
+				// for (Codec)OnErr
+				// s.errFlag = true
+				exit = true
+			}
+			break
+		}
+		if exit {
+			break
+		}
+		if 0 == bufLen {
+			continue // just continue if session can not read no more stream bytes.
+		}
+		pktBuf.Write(buf[:bufLen])
+		for {
+			if pktBuf.Len() <= 0 {
+				break
+			}
+			// pkg, err = s.pkgHandler.Read(s, pktBuf)
+			pkg, pkgLen, err = s.reader.Read(s, pktBuf.Bytes())
+			if err == nil && s.maxMsgLen > 0 && pkgLen > int(s.maxMsgLen) {
+				err = jerrors.Errorf("pkgLen %d > session max message len %d", pkgLen, s.maxMsgLen)
+			}
+			if err != nil {
+				log.Warn("%s, [session.handleTCPPackage] = len{%d}, error{%s}",
+					s.sessionToken(), pkgLen, jerrors.ErrorStack(err))
+				// for (Codec)OnErr
+				// s.errFlag = true
+				exit = true
+				break
+			}
+			if pkg == nil {
+				break
+			}
+			s.UpdateActive()
+			s.rQ <- pkg
+			pktBuf.Next(pkgLen)
+		}
+		if exit {
+			break
+		}
+	}
+
+	return jerrors.Trace(err)
+}
+
+// get package from tcp stream(packet)
+func (s *session) handleKCPPackage() error {
+	var (
+		ok       bool
+		err      error
+		netError net.Error
+		conn     *gettyKCPConn
+		exit     bool
+		bufLen   int
+		pkgLen   int
+		buf      []byte
+		pktBuf   *bytes.Buffer
+		pkg      interface{}
+	)
+
+	buf = make([]byte, maxReadBufLen)
+	pktBuf = new(bytes.Buffer)
+	conn = s.Connection.(*gettyKCPConn)
 	for {
 		if s.IsClosed() {
 			err = nil

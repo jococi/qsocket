@@ -27,6 +27,7 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/jeanphorn/log4go"
 	jerrors "github.com/juju/errors"
+	"github.com/xtaci/kcp-go"
 )
 
 var (
@@ -73,6 +74,11 @@ func newServer(t EndPointType, opts ...ServerOption) *server {
 // NewTCServer builds a tcp server.
 func NewTCPServer(opts ...ServerOption) Server {
 	return newServer(TCP_SERVER, opts...)
+}
+
+// NewKCPServer builds a tcp server.
+func NewKCPServer(opts ...ServerOption) Server {
+	return newServer(KCP_SERVER, opts...)
 }
 
 // NewUDPEndPoint builds a unconnected udp server.
@@ -165,6 +171,22 @@ func (s *server) listenTCP() error {
 	return nil
 }
 
+func (s *server) listenKCP() error {
+	var (
+		err            error
+		streamListener net.Listener
+	)
+
+	streamListener, err = kcp.Listen(s.addr)
+	if err != nil {
+		return jerrors.Annotatef(err, "net.Listen(tcp, addr:%s))", s.addr)
+	}
+
+	s.streamListener = streamListener
+
+	return nil
+}
+
 func (s *server) listenUDP() error {
 	var (
 		err         error
@@ -194,6 +216,8 @@ func (s *server) listen() error {
 	switch s.endPointType {
 	case TCP_SERVER, WS_SERVER, WSS_SERVER:
 		return jerrors.Trace(s.listenTCP())
+	case KCP_SERVER:
+		return jerrors.Trace(s.listenKCP())
 	case UDP_ENDPOINT:
 		return jerrors.Trace(s.listenUDP())
 	}
@@ -212,6 +236,26 @@ func (s *server) accept(newSession NewSessionCallback) (Session, error) {
 	}
 
 	ss := newTCPSession(conn, s)
+	err = newSession(ss)
+	if err != nil {
+		conn.Close()
+		return nil, jerrors.Trace(err)
+	}
+
+	return ss, nil
+}
+
+func (s *server) acceptKcp(newSession NewSessionCallback) (Session, error) {
+	conn, err := s.streamListener.Accept()
+	if err != nil {
+		return nil, jerrors.Trace(err)
+	}
+	if gxnet.IsSameAddr(conn.RemoteAddr(), conn.LocalAddr()) {
+		log.Warn("conn.localAddr{%s} == conn.RemoteAddr", conn.LocalAddr().String(), conn.RemoteAddr().String())
+		return nil, errSelfConnect
+	}
+
+	ss := newKCPSession(conn, s)
 	err = newSession(ss)
 	if err != nil {
 		conn.Close()
@@ -240,6 +284,47 @@ func (s *server) runTcpEventLoop(newSession NewSessionCallback) {
 				<-wheel.After(delay)
 			}
 			client, err = s.accept(newSession)
+			if err != nil {
+				if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+					if delay == 0 {
+						delay = 5 * time.Millisecond
+					} else {
+						delay *= 2
+					}
+					if max := 1 * time.Second; delay > max {
+						delay = max
+					}
+					continue
+				}
+				log.Warn("server{%s}.Accept() = err {%#v}", s.addr, jerrors.ErrorStack(err))
+				continue
+			}
+			delay = 0
+			// client.RunEventLoop()
+			client.(*session).run()
+		}
+	}()
+}
+
+func (s *server) runKcpEventLoop(newSession NewSessionCallback) {
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		var (
+			err    error
+			client Session
+			delay  time.Duration
+		)
+		for {
+			if s.IsClosed() {
+				log.Warn("server{%s} stop acceptting client connect request.", s.addr)
+				return
+			}
+			if delay != 0 {
+				// time.Sleep(delay)
+				<-wheel.After(delay)
+			}
+			client, err = s.acceptKcp(newSession)
 			if err != nil {
 				if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
 					if delay == 0 {
@@ -439,6 +524,8 @@ func (s *server) RunEventLoop(newSession NewSessionCallback) {
 		s.runWSEventLoop(newSession)
 	case WSS_SERVER:
 		s.runWSSEventLoop(newSession)
+	case KCP_SERVER:
+		s.runKcpEventLoop(newSession)
 	default:
 		panic(fmt.Sprintf("illegal server type %s", s.endPointType.String()))
 	}

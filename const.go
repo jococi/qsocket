@@ -25,17 +25,21 @@ const (
 	TCP_SERVER   EndPointType = 7
 	WS_SERVER    EndPointType = 8
 	WSS_SERVER   EndPointType = 9
+	KCP_SERVER   EndPointType = 10
+	KCP_CLIENT   EndPointType = 11
 )
 
 var EndPointType_name = map[int32]string{
-	0: "UDP_ENDPOINT",
-	1: "UDP_CLIENT",
-	2: "TCP_CLIENT",
-	3: "WS_CLIENT",
-	4: "WSS_CLIENT",
-	7: "TCP_SERVER",
-	8: "WS_SERVER",
-	9: "WSS_SERVER",
+	0:  "UDP_ENDPOINT",
+	1:  "UDP_CLIENT",
+	2:  "TCP_CLIENT",
+	3:  "WS_CLIENT",
+	4:  "WSS_CLIENT",
+	7:  "TCP_SERVER",
+	8:  "WS_SERVER",
+	9:  "WSS_SERVER",
+	10: "KCP_SERVER",
+	11: "KCP_CLIENT",
 }
 
 var EndPointType_value = map[string]int32{
@@ -47,6 +51,8 @@ var EndPointType_value = map[string]int32{
 	"TCP_SERVER":   7,
 	"WS_SERVER":    8,
 	"WSS_SERVER":   9,
+	"KCP_SERVER":   10,
+	"KCP_CLIENT":   11,
 }
 
 func (x EndPointType) String() string {
