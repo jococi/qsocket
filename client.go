@@ -22,9 +22,9 @@ import (
 )
 
 import (
+	"github.com/AlexStocks/goext/net"
 	"github.com/gorilla/websocket"
 	log "github.com/jeanphorn/log4go"
-	"github.com/jococi/qsocket/net"
 	jerrors "github.com/juju/errors"
 )
 
