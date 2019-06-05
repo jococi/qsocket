@@ -173,7 +173,9 @@ func (s *session) gettyConn() *gettyConn {
 	if tc, ok := s.Connection.(*gettyTCPConn); ok {
 		return &(tc.gettyConn)
 	}
-
+	if kc, ok := s.Connection.(*gettyKCPConn); ok {
+		return &(kc.gettyConn)
+	}
 	if uc, ok := s.Connection.(*gettyUDPConn); ok {
 		return &(uc.gettyConn)
 	}
