@@ -1,4 +1,4 @@
-package getty
+package qsocket
 
 import (
 	"sync"
