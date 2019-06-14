@@ -22,8 +22,8 @@ import (
 )
 
 import (
-	"github.com/AlexStocks/goext/net"
-	"github.com/AlexStocks/goext/time"
+	gxnet "github.com/AlexStocks/goext/net"
+	gxtime "github.com/AlexStocks/goext/time"
 	"github.com/gorilla/websocket"
 	log "github.com/jeanphorn/log4go"
 	jerrors "github.com/juju/errors"

@@ -22,7 +22,7 @@ import (
 )
 
 import (
-	"github.com/AlexStocks/goext/net"
+	gxnet "github.com/AlexStocks/goext/net"
 	"github.com/gorilla/websocket"
 	log "github.com/jeanphorn/log4go"
 	jerrors "github.com/juju/errors"
@@ -30,8 +30,8 @@ import (
 )
 
 const (
-	connInterval   = 3e9 // 3s
-	connectTimeout = 5e9
+	connInterval   = 5e8 // 500ms
+	connectTimeout = 3e9
 	maxTimes       = 10
 )
 
@@ -205,7 +205,7 @@ func (c *client) dialUDP() Session {
 		}
 
 		// check connection alive by write/read action
-		conn.SetWriteDeadline(wheel.Now().Add(1e9))
+		conn.SetWriteDeadline(time.Now().Add(1e9))
 		if length, err = conn.Write(connectPingPackage[:]); err != nil {
 			conn.Close()
 			log.Warn("conn.Write(%s) = {length:%d, err:%s}", string(connectPingPackage), length, jerrors.ErrorStack(err))
@@ -213,7 +213,7 @@ func (c *client) dialUDP() Session {
 			<-wheel.After(connInterval)
 			continue
 		}
-		conn.SetReadDeadline(wheel.Now().Add(1e9))
+		conn.SetWriteDeadline(time.Now().Add(1e9))
 		length, err = conn.Read(buf)
 		if netErr, ok := jerrors.Cause(err).(net.Error); ok && netErr.Timeout() {
 			err = nil
@@ -393,6 +393,10 @@ func (c *client) connect() {
 			// ss.RunEventLoop()
 			ss.(*session).run()
 			c.Lock()
+			if c.ssMap == nil {
+				c.Unlock()
+				break
+			}
 			c.ssMap[ss] = struct{}{}
 			c.Unlock()
 			ss.SetAttribute(sessionClientKey, c)
@@ -440,8 +444,7 @@ func (c *client) reConnect() {
 		if maxTimes < times {
 			times = maxTimes
 		}
-		// time.Sleep(time.Duration(int64(times) * connInterval))
-		<-wheel.After(time.Duration(int64(times) * connInterval))
+		time.Sleep(time.Duration(int64(times) * int64(c.reconnectInterval)))
 	}
 }
 

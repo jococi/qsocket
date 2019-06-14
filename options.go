@@ -70,7 +70,7 @@ type ClientOption func(*ClientOptions)
 type ClientOptions struct {
 	addr   string
 	number int
-
+	reconnectInterval int // reConnect Interval
 	// the cert file of wss server which may contain server domain, server ip, the starting effective date, effective
 	// duration, the hash alg, the len of the private key.
 	// wss client will use it.
@@ -81,6 +81,13 @@ type ClientOptions struct {
 func WithServerAddress(addr string) ClientOption {
 	return func(o *ClientOptions) {
 		o.addr = addr
+	}
+}
+
+// @reconnectInterval is server address.
+func WithReconnectInterval(reconnectInterval int) ClientOption {
+	return func(o *ClientOptions) {
+		o.reconnectInterval = reconnectInterval
 	}
 }
 
@@ -95,5 +102,57 @@ func WithConnectionNumber(num int) ClientOption {
 func WithRootCertificateFile(cert string) ClientOption {
 	return func(o *ClientOptions) {
 		o.cert = cert
+	}
+}
+
+
+////////////////////////////////////////
+// Task Pool Options
+/////////////////////////////////////////
+
+type TaskPoolOptions struct {
+	tQLen      int // task queue length
+	tQNumber   int // task queue number
+	tQPoolSize int // task pool size
+}
+
+func (o *TaskPoolOptions) validate() {
+	if o.tQPoolSize < 1 {
+		panic(fmt.Sprintf("[getty][task_pool] illegal pool size %d", o.tQPoolSize))
+	}
+
+	if o.tQLen < 1 {
+		o.tQLen = defaultTaskQLen
+	}
+
+	if o.tQNumber < 1 {
+		o.tQNumber = defaultTaskQNumber
+	}
+
+	if o.tQNumber > o.tQPoolSize {
+		o.tQNumber = o.tQPoolSize
+	}
+}
+
+type TaskPoolOption func(*TaskPoolOptions)
+
+// @size is the task queue pool size
+func WithTaskPoolTaskPoolSize(size int) TaskPoolOption {
+	return func(o *TaskPoolOptions) {
+		o.tQPoolSize = size
+	}
+}
+
+// @length is the task queue length
+func WithTaskPoolTaskQueueLength(length int) TaskPoolOption {
+	return func(o *TaskPoolOptions) {
+		o.tQLen = length
+	}
+}
+
+// @number is the task queue number
+func WithTaskPoolTaskQueueNumber(number int) TaskPoolOption {
+	return func(o *TaskPoolOptions) {
+		o.tQNumber = number
 	}
 }
