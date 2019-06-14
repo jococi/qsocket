@@ -6,7 +6,7 @@ import (
 )
 
 import (
-	log "github.com/AlexStocks/log4go"
+	log "github.com/jeanphorn/log4go"
 )
 
 const (
