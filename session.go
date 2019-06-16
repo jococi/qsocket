@@ -35,6 +35,7 @@ const (
 	netIOTimeout          = 1e9      // 1s
 	period                = 60 * 1e9 // 1 minute
 	pendingDuration       = 3e9
+	defaultQLen           = 1024
 	defaultSessionName    = "session"
 	defaultTCPSessionName = "tcp-session"
 	defaultUDPSessionName = "udp-session"
