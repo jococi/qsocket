@@ -10,6 +10,8 @@
 
 package qsocket
 
+import "fmt"
+
 /////////////////////////////////////////
 // Server Options
 /////////////////////////////////////////
@@ -68,8 +70,8 @@ func WithWebsocketServerRootCert(cert string) ServerOption {
 type ClientOption func(*ClientOptions)
 
 type ClientOptions struct {
-	addr   string
-	number int
+	addr              string
+	number            int
 	reconnectInterval int // reConnect Interval
 	// the cert file of wss server which may contain server domain, server ip, the starting effective date, effective
 	// duration, the hash alg, the len of the private key.
@@ -104,7 +106,6 @@ func WithRootCertificateFile(cert string) ClientOption {
 		o.cert = cert
 	}
 }
-
 
 ////////////////////////////////////////
 // Task Pool Options
