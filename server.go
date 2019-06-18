@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -33,11 +34,14 @@ import (
 var (
 	errSelfConnect        = jerrors.New("connect self!")
 	serverFastFailTimeout = gxtime.TimeSecondDuration(1)
+	serverID              = EndPointID(0)
 )
 
 type server struct {
 	ServerOptions
 
+	// endpoint ID
+	endPointID EndPointID
 	// net
 	pktListener    net.PacketConn
 	streamListener net.Listener
@@ -58,6 +62,7 @@ func (s *server) init(opts ...ServerOption) {
 
 func newServer(t EndPointType, opts ...ServerOption) *server {
 	s := &server{
+		endPointID:   atomic.AddInt32(&serverID, 1),
 		endPointType: t,
 		done:         make(chan struct{}),
 	}
@@ -102,7 +107,9 @@ func NewWSSServer(opts ...ServerOption) Server {
 
 	return s
 }
-
+func (s server) ID() int32 {
+	return s.endPointID
+}
 func (s server) EndPointType() EndPointType {
 	return s.endPointType
 }

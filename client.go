@@ -18,6 +18,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -30,9 +31,10 @@ import (
 )
 
 const (
-	connInterval   = 5e8 // 500ms
-	connectTimeout = 3e9
-	maxTimes       = 10
+	reconnectInterval = 3e8 // 500ms
+	connectInterval   = 5e8 // 500ms
+	connectTimeout    = 3e9
+	maxTimes          = 10
 )
 
 var (
@@ -43,9 +45,15 @@ var (
 /////////////////////////////////////////
 // qsocket tcp client
 /////////////////////////////////////////
+var (
+	clientID = EndPointID(0)
+)
 
 type client struct {
 	ClientOptions
+
+	// endpoint ID
+	endPointID EndPointID
 
 	// net
 	sync.Mutex
@@ -67,6 +75,7 @@ func (c *client) init(opts ...ClientOption) {
 
 func newClient(t EndPointType, opts ...ClientOption) *client {
 	c := &client{
+		endPointID:   atomic.AddInt32(&clientID, 1),
 		endPointType: t,
 		done:         make(chan struct{}),
 	}
@@ -121,6 +130,9 @@ func NewWSSClient(opts ...ClientOption) Client {
 
 	return c
 }
+func (c client) ID() EndPointID {
+	return c.endPointID
+}
 
 func (c client) EndPointType() EndPointType {
 	return c.endPointType
@@ -146,8 +158,8 @@ func (c *client) dialTCP() Session {
 		}
 
 		log.Info("net.DialTimeout(addr:%s, timeout:%v) = error{%s}", c.addr, jerrors.ErrorStack(err))
-		// time.Sleep(connInterval)
-		<-wheel.After(connInterval)
+		// time.Sleep(connectInterval)
+		<-wheel.After(connectInterval)
 	}
 }
 
@@ -171,8 +183,8 @@ func (c *client) dialKCP() Session {
 		}
 
 		log.Info("net.DialTimeout(addr:%s, timeout:%v) = error{%s}", c.addr, jerrors.ErrorStack(err))
-		// time.Sleep(connInterval)
-		<-wheel.After(connInterval)
+		// time.Sleep(connectInterval)
+		<-wheel.After(connectInterval)
 	}
 }
 func (c *client) dialUDP() Session {
@@ -199,8 +211,8 @@ func (c *client) dialUDP() Session {
 		}
 		if err != nil {
 			log.Warn("net.DialTimeout(addr:%s, timeout:%v) = error{%s}", c.addr, jerrors.ErrorStack(err))
-			// time.Sleep(connInterval)
-			<-wheel.After(connInterval)
+			// time.Sleep(connectInterval)
+			<-wheel.After(connectInterval)
 			continue
 		}
 
@@ -209,8 +221,8 @@ func (c *client) dialUDP() Session {
 		if length, err = conn.Write(connectPingPackage[:]); err != nil {
 			conn.Close()
 			log.Warn("conn.Write(%s) = {length:%d, err:%s}", string(connectPingPackage), length, jerrors.ErrorStack(err))
-			// time.Sleep(connInterval)
-			<-wheel.After(connInterval)
+			// time.Sleep(connectInterval)
+			<-wheel.After(connectInterval)
 			continue
 		}
 		conn.SetWriteDeadline(time.Now().Add(1e9))
@@ -221,8 +233,8 @@ func (c *client) dialUDP() Session {
 		if err != nil {
 			log.Info("conn{%#v}.Read() = {length:%d, err:%s}", conn, length, jerrors.ErrorStack(err))
 			conn.Close()
-			// time.Sleep(connInterval)
-			<-wheel.After(connInterval)
+			// time.Sleep(connectInterval)
+			<-wheel.After(connectInterval)
 			continue
 		}
 		//if err == nil {
@@ -260,8 +272,8 @@ func (c *client) dialWS() Session {
 		}
 
 		log.Info("websocket.dialer.Dial(addr:%s) = error:%s", c.addr, jerrors.ErrorStack(err))
-		// time.Sleep(connInterval)
-		<-wheel.After(connInterval)
+		// time.Sleep(connectInterval)
+		<-wheel.After(connectInterval)
 	}
 }
 
@@ -339,8 +351,8 @@ func (c *client) dialWSS() Session {
 		}
 
 		log.Info("websocket.dialer.Dial(addr:%s) = error{%s}", c.addr, jerrors.ErrorStack(err))
-		// time.Sleep(connInterval)
-		<-wheel.After(connInterval)
+		// time.Sleep(connectInterval)
+		<-wheel.After(connectInterval)
 	}
 }
 
@@ -424,11 +436,13 @@ func (c *client) RunEventLoop(newSession NewSessionCallback) {
 
 // a for-loop connect to make sure the connection pool is valid
 func (c *client) reConnect() {
-	var num, max, times int
+	var num, max, times, interval int
 
-	// c.Lock()
 	max = c.number
-	// c.Unlock()
+	interval = c.reconnectInterval
+	if interval == 0 {
+		interval = reconnectInterval
+	}
 	for {
 		if c.IsClosed() {
 			log.Warn("client{peer:%s} goroutine exit now.", c.addr)
@@ -444,7 +458,7 @@ func (c *client) reConnect() {
 		if maxTimes < times {
 			times = maxTimes
 		}
-		time.Sleep(time.Duration(int64(times) * int64(c.reconnectInterval)))
+		time.Sleep(time.Duration(int64(times) * int64(interval)))
 	}
 }
 
